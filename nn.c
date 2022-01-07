@@ -5,6 +5,8 @@
 #include <regex.h>
 #include <errno.h>
 
+#include <sys/stat.h>
+
 #define RECDIR_IMPLEMENTATION
 #include "thirdparty/recdir.h"
 
@@ -17,16 +19,23 @@
 #define STRLIST_IMPLEMENTATION
 #include "strlist.h"
 
-const char *DMENU_ARGS = "-l 20";
+static const char *DMENU_ARGS = "-l 20";
 
-void usage(FILE *sink, char *program)
+static char *cache_dir;
+static char *hist_filepath;
+
+// typedef struct {
+// } options_t;
+
+
+void usage(FILE *sink, const char *program)
 {
     fprintf(sink, "Usage: %s [OPTIONS] [--] <OUTPUT FILES...>\n", program);
     fprintf(sink, "OPTIONS:\n");
     flag_print_options(sink);
 }
 
-struct dirent * look_for_file(DIR *dir, char *filename){
+struct dirent * look_for_file(DIR *dir, const char *filename){
     long loc = telldir(dir);
     struct dirent *ent = NULL;
     while ((ent = readdir(dir))) {
@@ -44,29 +53,27 @@ void read_blfile(char *path, StrList *blist) {
         exit(1);
     }
     
-    char *line = NULL;
-    char *c;
     size_t len;
-    // ssize_t read;
-
+    char *line = NULL, *c;
     while (getline(&line, &len, fd) != -1) {
         // remove newline
-        c = line;
-        while (*c != '\n' && *c != 0) ++c;
+        for (c = line; *c != '\n' && *c != 0; ++c);
         *c = 0;
-        // printf("%s",line);
-        // *line = 0;
-        // Might want to look for duplicates
+        // TODO: Might want to look for duplicates. A bitree would fix this
         strlist_add(blist, line);
-
     }
     
     fclose(fd);
 }
 
-void listfiles(FILE *sink, char *path, char *regex) {
+void read_hist(const char *filename) {
+}
+
+void listfiles(FILE *sink, const char *path, const char *regex) {
     RECDIR *recdir = recdir_open(path);
     
+    read_hist("~/testA");
+
     regex_t rgx;
     regcomp(&rgx, regex, 0);
 
@@ -75,15 +82,27 @@ void listfiles(FILE *sink, char *path, char *regex) {
     bool blacklisted;
     int i;
 
-    errno = 0;
+
     struct dirent *ent, *blfile;
+    RECDIR_Frame *current = recdir_top(recdir);
+
+    blfile = look_for_file(current->dir, ".blacklist");
+    if (blfile) {
+        /// TODO: The blacklist should be a bitree.
+        sprintf(buff, "%s/.blacklist", current->path);
+        printf("%s:\n", buff);
+        read_blfile(buff, &blist);
+    }
+
+    errno = 0;
     while (ent = recdir_read(recdir, true)) {
         if (ent->d_type == DT_DIR) {
-            RECDIR_Frame *current = recdir_top(recdir);
+            current = recdir_top(recdir);
             blfile = look_for_file(current->dir, ".blacklist");
             if (blfile) {
                 /// TODO: The blacklist should be a bitree.
                 sprintf(buff, "%s/.blacklist", current->path);
+                printf("%s:\n", buff);
                 read_blfile(buff, &blist);
             }
             
@@ -111,9 +130,7 @@ void listfiles(FILE *sink, char *path, char *regex) {
         if (regexec(&rgx, ent->d_name, 0, NULL, 0)) 
             continue;
 
-        // printf("%s/%s\n", recdir_top(recdir)->path, ent->d_name);
         fprintf(sink, "%s/%s\n", recdir_top(recdir)->path, ent->d_name);
-        // char *path = join_path(recdir_top(recdir)->path, ent->d_name);
     }
 
     if (errno != 0) {
@@ -126,11 +143,14 @@ void listfiles(FILE *sink, char *path, char *regex) {
     recdir_close(recdir);
 }
 
-char * dmenu_browse(char *notes, char *regex) {
+char * dmenu_browse(const char *notes, const char *regex) {
     struct popen2 child;
     
+    char cmd[1024];
+    sprintf(cmd, "dmenu %s", DMENU_ARGS);
+
     chdir(notes);
-    popen2("dmenu -l 20", &child);
+    popen2(cmd, &child);
 
     FILE *fd = fdopen(child.to_child, "w");
     listfiles(fd, ".", regex);
@@ -153,21 +173,40 @@ char * dmenu_browse(char *notes, char *regex) {
     return buff;
 }
 
-void open(char *path) {
+void open(const char *path) {
     char buff[1024];
+    // TODO: The program should be an option
+
     sprintf(buff, "gio open '%s'", path);
+    // sprintf(buff, "zathura '%s'", path);
     system(buff);
-    // FILE *fd = popen(buff);
-    // pclose(fd);
 }
 
+void init(){
+ // Find cache directiory
+    int len;
+    const char *homedir, *dsuffix = "";
+	if ((homedir = getenv("XDG_CACHE_HOME")) == NULL || homedir[0] == '\0') {
+		homedir = getenv("HOME");
+		dsuffix = "/.cache";
+	}
+	if (homedir != NULL) {
+		len = strlen(homedir) + strlen(dsuffix) + 4;
+		cache_dir = (char*) malloc(len);
+		snprintf(cache_dir, len, "%s%s/nn", homedir, dsuffix);
+    
+		cache_dir = (char*) malloc(len + 5);
+		snprintf(hist_filepath, len, "%s/hist", cache_dir);
+	} else {
+		fprintf(stderr, "%s\n", "Cache directory not found");
+    }
+	
+}
 
 int main(int argc, char **argv) {
-    char *program = *argv;
-    
-    // TODO:  Ignore hidden option
+    const char *program = *argv;
 
-        
+    // TODO:  Ignore hidden option
     bool *help = flag_bool("help", false, "Print this help to stdout and exit with 0");
     bool *browse = flag_bool("browse", false, "Line to output to the file");
 
@@ -191,18 +230,21 @@ int main(int argc, char **argv) {
                 variable `NOTES` or provide a directory with --note-dir option");
         exit(1);
     }
-    
+ 
+    // Parse the chach path as an argument, when an option.
+    // init();
+
     argv = flag_rest_argv();
 
-    char *regex = ".pdf$\\|.djvu$";
-    char *path;
+
+    const char *path;
     if (*browse) {
-        path = dmenu_browse(*notes, regex);
+        path = dmenu_browse(*notes, ".pdf$\\|.djvu$");
         if (path != NULL)
             open(path);
     }
+
     // while (*argv) {
     //     open(argv++);
     // }
 }
-

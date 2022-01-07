@@ -38,7 +38,7 @@ void recdir_close(RECDIR *recdirp);
 
 #ifdef RECDIR_IMPLEMENTATION
 
-#define _DEFAULT_SOURCE
+// #define _DEFAULT_SOURCE
 #include <assert.h>
 #include <string.h>
 #include <errno.h>

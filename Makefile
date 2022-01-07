@@ -1,13 +1,22 @@
-CFLAGS=-Wall -Wextra -std=c11 -pedantic -ggdb
-CXXFLAGS=-Wall -Wextra -std=c++17 -pedantic -ggdb
+CC = g++
+TARGET = bin/$(PROJECT)
 
-RELEASE_CFLAGS=-Wall -Wextra -std=c11 -pedantic -ggdb
-RELEASE_CXXFLAGS=-Wall -Wextra -O3 -std=c++17
+FLAGS= -std=c++17 -pedantic -ggdb
 
-.PHONY: all
+RELEASE_CXXFLAGS=-O3 -std=c++17
+
+
+.PHONY: all clean
 all: 
-	$(CXX) -o nn $(CXXFLAGS) nn.c
+	$(CC) -o nn $(FLAGS) nn.c
 
-release:
-	$(CXX) -o nn $(RELEASE_CXXFLAGS) nn.c
+release: nn.c
+	$(CC) -o nn $(RELEASE_FLAGS) nn.c
 
+install: release
+	cp nn /usr/bin/nn
+	chmod 755 /usr/bin/nn
+
+clean:
+	@echo cleaning
+	@rm -rf nn
