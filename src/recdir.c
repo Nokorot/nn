@@ -1,44 +1,5 @@
-//
-// Code from: https://github.com/tsoding/dedup
-//
-#ifndef RECDIR_H_
-#define RECDIR_H_
+#include "recdir.h"
 
-#include <stdlib.h>
-#include <dirent.h>
-
-#define RECDIR_STACK_CAP 1024
-
-#define PATH_SEP "/"
-#define PATH_SEP_LEN (sizeof(PATH_SEP) - 1)
-
-typedef struct {
-    DIR *dir;
-    char *path;
-} RECDIR_Frame;
-
-typedef struct {
-    RECDIR_Frame stack[RECDIR_STACK_CAP];
-    size_t stack_size;
-} RECDIR;
-
-char *join_path(const char *base, const char *file);
-
-RECDIR_Frame *recdir_top(RECDIR *recdir);
-int recdir_push(RECDIR *recdir, char *path);
-void recdir_pop(RECDIR *recdir);
-
-RECDIR *recdir_open(const char *dir_path);
-struct dirent *recdir_read(RECDIR *recdirp, bool include_dirs);
-void recdir_close(RECDIR *recdirp);
-
-#endif // RECDIR_H_
-
-//////////////////////////////
-
-#ifdef RECDIR_IMPLEMENTATION
-
-// #define _DEFAULT_SOURCE
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
@@ -148,5 +109,3 @@ void recdir_close(RECDIR *recdir)
     }
     free(recdir);
 }
-
-#endif
