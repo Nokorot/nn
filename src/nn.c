@@ -1,11 +1,11 @@
 #include "nn.h"
 #include <unistd.h>
+#include <stdlib.h>
 
 #include "listfiles.h"
 
 #define FLAG_IMPLEMENTATION
 #include "flag.h"
-
 
 void usage(FILE *sink, const char *program)
 {
@@ -14,28 +14,88 @@ void usage(FILE *sink, const char *program)
     flag_print_options(sink);
 }
 
-
-char * dmenu_browse(const char *notes, const char *regex) {
+char * tmenu_browse(const char *notes, const char *regex) {
     struct popen2 child;
-    
-    char cmd[1024];
-    sprintf(cmd, "dmenu %s", DMENU_ARGS);
-
     chdir(notes);
-    popen2(cmd, &child);
 
-    FILE *fd = fdopen(child.to_child, "w");
-    listfiles(fd, ".", regex);
-    fflush(fd);
-    close(child.to_child);
+    char temp_in[15], temp_out[15];
+    strcpy(temp_in, "nn-in.XXXXXX");
+    strcpy(temp_out, "nn-out.XXXXXX");
+
+    int fp_in = mkstemp(temp_in);
+    FILE *fd_in = fdopen(fp_in, "w");
+    listfiles(fd_in, ".", regex);
+    fclose(fd_in);
+    
+    int fp_out = mkstemp(temp_out);
+    FILE *fd_out = fdopen(fp_out, "r");
+
+    char cmd[1024];
+    sprintf(cmd, "tmenu %s %s", temp_in, temp_out);
+    system(cmd);
 
     char *buff = (char *) malloc(sizeof(char)*1024);
     memset(buff, 0, 1024);
-    read(child.from_child, buff, 1024);
- 
-    // Check if wheter there was no output
+    fread(buff, sizeof(char), 1024, fd_out);
+    fclose(fd_out);
+
     if (*buff == 0)
         return NULL;
+
+    // Remove newline
+    char *c = buff;
+    while (*c != '\n' && *c != 0) ++c;
+    *c = 0;
+
+    return buff;
+}
+
+
+char * dmenu_browse(const char *notes, const char *regex) {
+    struct popen2 child;
+
+    // char cmd[1024];
+    // sprintf(cmd, "tmenu %s %s");
+    // sprintf(cmd, "dmenu %s", DMENU_ARGS);
+
+    chdir(notes);
+    // popen2(cmd, &child);
+    
+
+    // char *temp = mktemp("XXXXX");
+    char temp_in[15], temp_out[15];
+    strcpy(temp_in, "nn-in.XXXXXX");
+    strcpy(temp_out, "nn-out.XXXXXX");
+
+    // FILE *fd = fopen(temp_in, "w");
+    int fp_in = mkstemp(temp_in);
+    FILE *fd_in = fdopen(fp_in, "w");
+    listfiles(fd_in, ".", regex);
+    fclose(fd_in);
+    
+    int fp_out = mkstemp(temp_out);
+    FILE *fd_out = fdopen(fp_out, "r");
+
+    char cmd[1024];
+    sprintf(cmd, "tmenu %s %s", temp_in, temp_out);
+    // sprintf(cmd, "dmenu %s", DMENU_ARGS);
+    system(cmd);
+
+
+    char *buff = (char *) malloc(sizeof(char)*1024);
+    fread(buff, sizeof(char), 1024, fd_out);
+    fclose(fd_out);
+
+    // child.to_child
+    // close(child.to_child);
+
+    // char *buff = (char *) malloc(sizeof(char)*1024);
+    // memset(buff, 0, 1024);
+    // read(child.from_child, buff, 1024);
+ 
+    // Check if wheter there was no output
+    // if (*buff == 0)
+    //     return NULL;
 
     // Remove newline
     char *c = buff;
@@ -64,11 +124,14 @@ void hist_add(const char *path) {
 
 void open(const char *path) {
     char buff[1024];
-    // TODO: The program should be an option
-
     hist_add(path);
 
-    sprintf(buff, "gio open '%s'", path);
+    // TODO: Flag and env_var
+
+    sprintf(buff, "echo 'okular.exe \"%s\"' | cmd.exe", path);
+
+    // sprintf(buff, "okular.exe \"$(wslpath -w '%s')\"", path);
+    // sprintf(buff, "gio open '%s'", path);
     // sprintf(buff, "zathura '%s'", path);
     system(buff);
 }
@@ -116,9 +179,13 @@ char *get_cachedir() {
 }
 
 char *gen_histpath(const char *path) {
-    printf("%s\n", realpath(path, NULL));
+    // printf("%s\n", realpath(path, NULL));
+
 
     char *cache_dir = get_cachedir();
+
+    // TODO: Make the directory if not exists!
+    // printf("%s\n", cache_dir);
 
     size_t len = strlen(cache_dir) + 22;
     char *hist_path = (char *) malloc(len);
@@ -158,8 +225,11 @@ int main(int argc, char **argv) {
     argv = flag_rest_argv();
 
     const char *path;
-    if (*browse) {
-        path = dmenu_browse(*notes, ".pdf$\\|.djvu$");
+    if (*browse || *argv == 0) {
+        path = tmenu_browse(*notes, ".pdf$\\|.djvu$");
+
+        // TODO: Flag and env_var
+        // path = dmenu_browse(*notes, ".pdf$\\|.djvu$");
         if (path != NULL)
             open(path);
     }

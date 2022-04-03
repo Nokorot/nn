@@ -5,12 +5,12 @@ set -e
 SRC="$(find src -type f \( -name '*.cpp' -o -name "*.c" \))"
 
 debug() {
-    g++ -std=c++17 -pedantic -ggdb -o nn $SRC \
+    gcc -pedantic -ggdb -o nn $SRC \
         || exit 1
 }
 
 release() {
-    g++ -O3 -std=c++17 $SRC
+    g++ -O3 -std=c++17 -o nn $SRC
 }
 
 install() {
