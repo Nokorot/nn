@@ -10,7 +10,7 @@ debug() {
 }
 
 release() {
-    g++ -O3 -std=c++17 $SRC
+    g++ -O3 -std=c++17 -o nn $SRC
 }
 
 install() {

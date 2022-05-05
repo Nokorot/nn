@@ -15,11 +15,11 @@ void usage(FILE *sink, const char *program)
 }
 
 
-char * dmenu_browse(const char *notes, const char *regex) {
+char * dmenu_browse(const char *notes, const char *dmenu_args, const char *regex) {
     struct popen2 child;
     
     char cmd[1024];
-    sprintf(cmd, "dmenu %s", DMENU_ARGS);
+    sprintf(cmd, "dmenu %s", dmenu_args);
 
     chdir(notes);
     popen2(cmd, &child);
@@ -137,6 +137,8 @@ int main(int argc, char **argv) {
     char *notes_env = getenv("NOTES");
     char **notes = flag_str("notes-dir", notes_env, "Amount of lines to generate");
 
+    char **dmenu_args = flag_str("dmargs", DMENU_ARGS, "Arguments that are pased to dmenu");
+
     if (!flag_parse(argc, argv)) {
         usage(stderr, program);
         flag_print_error(stderr);
@@ -159,7 +161,7 @@ int main(int argc, char **argv) {
 
     const char *path;
     if (*browse) {
-        path = dmenu_browse(*notes, ".pdf$\\|.djvu$");
+        path = dmenu_browse(*notes, *dmenu_args, ".pdf$\\|.djvu$");
         if (path != NULL)
             open(path);
     }

@@ -29,6 +29,6 @@ void usage(FILE *sink, const char *program);
 
 void open(const char *path);
 
-char *dmenu_browse(const char *notes, const char *regex);
+char *dmenu_browse(const char *notes, const char *dmenu_args, const char *regex);
 
 #endif

@@ -1,5 +1,7 @@
 #include "listfiles.h"
 
+#include <unistd.h>
+
 #include "recdir.h"
 #include "nn.h"
 
@@ -44,6 +46,10 @@ void read_hist(StrList *files, const char *hist_path) {
             // remove newline
             for (c = line; *c != '\n' && *c != 0; ++c);
             *c = 0;
+            if (access(line,F_OK) != 0) {
+                continue;   
+            }
+
             strlist_add(files, line);
         }
         
