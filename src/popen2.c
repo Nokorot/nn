@@ -30,5 +30,5 @@ int popen2(const char *cmdline, struct popen2 *childinfo) {
     childinfo->from_child = pipe_stdout[0];
     close(pipe_stdin[0]);
     close(pipe_stdout[1]);
-    return 0; 
+    return 0;
 }

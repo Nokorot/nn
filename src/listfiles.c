@@ -9,7 +9,7 @@ struct dirent * look_for_file(DIR *dir, const char *filename){
     long loc = telldir(dir);
     struct dirent *ent = NULL;
     while ((ent = readdir(dir))) {
-        if (strcmp(ent->d_name, filename) == 0) 
+        if (strcmp(ent->d_name, filename) == 0)
             break;
     }
     seekdir(dir, loc);
@@ -22,7 +22,7 @@ void read_blfile(char *path, StrList *blist) {
         fprintf(stderr, "ERROR: Failed to open blacklist file `%s`\n", path);
         exit(1);
     }
-    
+
     size_t len;
     char *line = NULL, *c;
     while (getline(&line, &len, fd) != -1) {
@@ -32,7 +32,7 @@ void read_blfile(char *path, StrList *blist) {
         // TODO: Might want to look for duplicates. A bitree would fix this
         strlist_add(blist, line);
     }
-    
+
     fclose(fd);
 }
 
@@ -47,12 +47,12 @@ void read_hist(StrList *files, const char *hist_path) {
             for (c = line; *c != '\n' && *c != 0; ++c);
             *c = 0;
             if (access(line,F_OK) != 0) {
-                continue;   
+                continue;
             }
 
             strlist_add(files, line);
         }
-        
+
         fclose(fd);
     }
 
@@ -62,13 +62,13 @@ void read_hist(StrList *files, const char *hist_path) {
 
 void listfiles(FILE *sink, const char *path, const char *regex) {
     RECDIR *recdir = recdir_open(path);
-    
 
     regex_t rgx;
     regcomp(&rgx, regex, 0);
 
     StrList files = strlist_new(2048);
 
+    // TODO: The hisory files are shown even if they are blacklised
     char *hist_path = gen_histpath(path);
     read_hist(&files, hist_path);
     free(hist_path);
@@ -81,7 +81,9 @@ void listfiles(FILE *sink, const char *path, const char *regex) {
     struct dirent *ent, *blfile;
     RECDIR_Frame *current = recdir_top(recdir);
 
+
     blfile = look_for_file(current->dir, ".blacklist");
+
     if (blfile) {
         /// TODO: The blacklist should be a bitree.
         sprintf(buff, "%s/.blacklist", current->path);
@@ -92,6 +94,20 @@ void listfiles(FILE *sink, const char *path, const char *regex) {
 
     errno = 0;
     while (ent = recdir_read(recdir, true)) {
+
+        blacklisted = false;
+        for (i=0; !blacklisted && i<blist.size; ++i) {
+            if (strcmp(ent->d_name, blist.index[i]) == 0) {
+                blacklisted = true;
+            }
+        }
+
+        if (blacklisted){
+            if (ent->d_type == DT_DIR)
+                recdir_pop(recdir);
+            continue;
+        }
+
         if (ent->d_type == DT_DIR) {
             current = recdir_top(recdir);
             blfile = look_for_file(current->dir, ".blacklist");
@@ -100,30 +116,13 @@ void listfiles(FILE *sink, const char *path, const char *regex) {
                 sprintf(buff, "%s/.blacklist", current->path);
                 read_blfile(buff, &blist);
             }
-            
-            blacklisted = false;
-            for (i=0; !blacklisted && i<blist.size; ++i){
-                if (strcmp(ent->d_name, blist.index[i]) == 0) {
-                    blacklisted = true;
-                }
-            }
-            if (blacklisted){
-                recdir_pop(recdir);
-                continue;
-            }
-        }
-    
-        blacklisted = false;
-        for (i=0; !blacklisted && i<blist.size; ++i) {
-            if (strcmp(ent->d_name, blist.index[i]) == 0) {
-                blacklisted = true;
-            }
-        }
-        if (blacklisted){
+
             continue;
         }
-        if (regexec(&rgx, ent->d_name, 0, NULL, 0)) 
+
+        if (regexec(&rgx, ent->d_name, 0, NULL, 0))
             continue;
+
 
         sprintf(buff, "%s/%s", recdir_top(recdir)->path, ent->d_name);
         strlist_add(&files, buff);
@@ -136,7 +135,7 @@ void listfiles(FILE *sink, const char *path, const char *regex) {
         fprintf(sink, "%s\n", files.index[i]);
     }
 
-    
+
     if (errno != 0) {
         fprintf(stderr,
                 "ERROR: could not read the directory: %s\n",

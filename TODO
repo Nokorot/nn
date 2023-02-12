@@ -1,2 +1,5 @@
 
 - Fix: file is not removed from history when the file is removed
+
+- ignore blacklists
+

@@ -2,7 +2,7 @@
 #define STRLIST_H_
 
 #include <stdlib.h>
-#include <string.h> 
+#include <string.h>
 
 typedef struct {
     char **index;

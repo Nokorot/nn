@@ -6,7 +6,6 @@
 #define FLAG_IMPLEMENTATION
 #include "flag.h"
 
-
 void usage(FILE *sink, const char *program)
 {
     fprintf(sink, "Usage: %s [OPTIONS] [--] <OUTPUT FILES...>\n", program);
@@ -17,7 +16,7 @@ void usage(FILE *sink, const char *program)
 
 char * dmenu_browse(const char *notes, const char *dmenu_args, const char *regex) {
     struct popen2 child;
-    
+
     char cmd[1024];
     sprintf(cmd, "dmenu %s", dmenu_args);
 
@@ -32,7 +31,7 @@ char * dmenu_browse(const char *notes, const char *dmenu_args, const char *regex
     char *buff = (char *) malloc(sizeof(char)*1024);
     memset(buff, 0, 1024);
     read(child.from_child, buff, 1024);
- 
+
     // Check if wheter there was no output
     if (*buff == 0)
         return NULL;
@@ -48,12 +47,13 @@ char * dmenu_browse(const char *notes, const char *dmenu_args, const char *regex
 void hist_add(const char *path) {
     char *hist_path = gen_histpath(".");
     StrList hist = strlist_new(1024);
-    
+
     strlist_add(&hist, path);
     read_hist(&hist, hist_path);
 
     FILE *fd = fopen(hist_path, "w");
     if (fd) {
+        // TODO: Max history length
         for(int i=0; i<hist.size; ++i)
             fprintf(fd, "%s\n", hist.index[i]);
     }
@@ -106,7 +106,7 @@ char *get_cachedir() {
         // This should be recursive.
         // And check if failed
         mkdir(g_cache_dir, 0755);
-    
+
         // hist_filepath = (char*) malloc(len + 6);
         // sprintf(hist_filepath, "%s/hist", cache_dir);
     } else {

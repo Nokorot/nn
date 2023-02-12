@@ -17,7 +17,7 @@ void strlist_add(StrList *slst, const char *str) {
         if (strcmp(slst->index[i], str) == 0)
             return;
     }
-    
+
 
     // assert(slst.size < slst.capacity);
     size_t len = strlen(str);
