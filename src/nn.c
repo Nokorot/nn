@@ -1,18 +1,19 @@
 #include "nn.h"
 #include <unistd.h>
 
+// #include <stdio.h>
+// #include <stdlib.h>
+// #include <stdbool.h>
+// #include <string.h>
+// #include <regex.h>
+// #include <errno.h>
+
+#include <sys/stat.h>
+
+#include "popen2.h"
+#include "strlist.h"
+
 #include "listfiles.h"
-
-#define FLAG_IMPLEMENTATION
-#include "flag.h"
-
-void usage(FILE *sink, const char *program)
-{
-    fprintf(sink, "Usage: %s [OPTIONS] [--] <OUTPUT FILES...>\n", program);
-    fprintf(sink, "OPTIONS:\n");
-    flag_print_options(sink);
-}
-
 
 char * dmenu_browse(const char *notes, const char *dmenu_args, const char *regex) {
     struct popen2 child;
@@ -101,14 +102,11 @@ char *get_cachedir() {
         len = strlen(homedir) + strlen(dsuffix) + 5;
         g_cache_dir = (char*) malloc(len);
         snprintf(g_cache_dir, len, "%s%s/nn", homedir, dsuffix);
-        return g_cache_dir;
 
-        // This should be recursive.
+        // TODO: This should be recursive.
         // And check if failed
         mkdir(g_cache_dir, 0755);
-
-        // hist_filepath = (char*) malloc(len + 6);
-        // sprintf(hist_filepath, "%s/hist", cache_dir);
+        return g_cache_dir;
     } else {
         fprintf(stderr, "%s\n", "Cache directory not found");
         return 0;
@@ -125,48 +123,4 @@ char *gen_histpath(const char *path) {
 
     sprintf(hist_path, "%s/%lx.hist", cache_dir, hash(realpath(path, NULL)));
     return hist_path;
-}
-
-int main(int argc, char **argv) {
-    const char *program = *argv;
-
-    // TODO:  Ignore hidden option
-    bool *help = flag_bool("help", false, "Print this help to stdout and exit with 0");
-    bool *browse = flag_bool("browse", false, "Line to output to the file");
-
-    char *notes_env = getenv("NOTES");
-    char **notes = flag_str("notes-dir", notes_env, "Amount of lines to generate");
-
-    char **dmenu_args = flag_str("dmargs", DMENU_ARGS, "Arguments that are pased to dmenu");
-
-    if (!flag_parse(argc, argv)) {
-        usage(stderr, program);
-        flag_print_error(stderr);
-        exit(1);
-    }
-
-    if (*help) {
-        usage(stdout, program);
-        exit(0);
-    }
-
-    if (*notes == NULL) {
-        usage(stderr, program);
-        fprintf(stderr, "ERROR: No 'notes directory' was provided. Set the environment \
-                variable `NOTES` or provide a directory with --note-dir option");
-        exit(1);
-    }
-
-    argv = flag_rest_argv();
-
-    const char *path;
-    if (*browse) {
-        path = dmenu_browse(*notes, *dmenu_args, ".pdf$\\|.djvu$");
-        if (path != NULL)
-            open(path);
-    }
-
-    // while (*argv) {
-    //     open(argv++);
-    // }
 }

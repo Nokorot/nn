@@ -2,8 +2,7 @@
 #define LISTFILES_H_
 
 #include <stdio.h>
-#include <string.h>
-
+ 
 #include "strlist.h"
 #include "recdir.h"
 

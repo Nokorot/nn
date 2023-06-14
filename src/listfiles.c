@@ -1,6 +1,8 @@
 #include "listfiles.h"
 
 #include <unistd.h>
+#include <regex.h>
+#include <errno.h>
 
 #include "recdir.h"
 #include "nn.h"
